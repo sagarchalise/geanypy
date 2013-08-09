@@ -35,6 +35,7 @@ AC_CONFIG_FILES([
     Makefile
 	src/Makefile
 	geany/Makefile
+    geanypy/Makefile
     plugins/Makefile
 ])
 AC_OUTPUT
