@@ -12,8 +12,7 @@ class DemoPlugin(geany.Plugin):
     def __init__(self):
         super(DemoPlugin, self).__init__()
         print("Demo plugin initializing")
-        doc = Document.new()
-        doc.sci.set_text("Hello from the Demo plugin")
+        Document.new().text = "Hello from the Demo plugin"
 
     def cleanup(self):
         print("Demo plugin cleaning up")
