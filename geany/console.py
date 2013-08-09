@@ -525,8 +525,8 @@ class _Console(_ReadLine, code.InteractiveInterpreter):
     def do_command(self, code):
         try:
             eval(code, self.locals)
-        except SystemExit:
-            raise
+        #except SystemExit:
+            #raise
         except:
             self.showtraceback()
 
