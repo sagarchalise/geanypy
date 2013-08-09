@@ -8,6 +8,7 @@ if pygtkcompat is not None:
     pygtkcompat.enable_gtk(version='3.0')
 import gtk
 import geany
+import geanypy
 
 class HelloWorld(geany.Plugin):
 
@@ -26,4 +27,4 @@ class HelloWorld(geany.Plugin):
         self.menu_item.destroy()
 
     def on_hello_item_clicked(widget, data):
-        geany.dialogs.show_msgbox("Hello World")
+        geanypy.info_message("Hello World")

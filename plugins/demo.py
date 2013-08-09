@@ -1,4 +1,5 @@
 import geany
+from geanypy import Document
 
 
 class DemoPlugin(geany.Plugin):
@@ -11,8 +12,8 @@ class DemoPlugin(geany.Plugin):
     def __init__(self):
         super(DemoPlugin, self).__init__()
         print("Demo plugin initializing")
-        doc = geany.document.new_file()
-        doc.editor.scintilla.set_text("Hello from the Demo plugin")
+        doc = Document.new()
+        doc.sci.set_text("Hello from the Demo plugin")
 
     def cleanup(self):
         print("Demo plugin cleaning up")
