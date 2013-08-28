@@ -240,6 +240,10 @@ class Document(object):
         " Replaces the current selection (if any) with the given text. "
         self.sci.replace_sel(text)
 
+    def insert_snippet(self, position, snippet):
+        "Insert snippet at given position."
+        self.doc_.editor.insert_snippet(position, snippet)
+
     def erase_selection(self, text):
         " Erases the current selection (if any). "
         self.replace_selection('')
