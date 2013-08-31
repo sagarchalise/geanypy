@@ -12,7 +12,7 @@ import gtk
 import geany
 from doc import Document
 
-__all__ = [ "Document" ]
+__all__ = [ "Document"]
 
 def status_message(msg, log=False):
     """ Place a message in the status bar, and logged in the status
@@ -68,3 +68,9 @@ def disconnect(callback_id):
 def documents():
     " Returns a list of open documents. An alias for Document.list_documentS(). "
     return Document.list_documents()
+
+def bind_key(name, label, callback, data=None):
+    geany.bindings.register_binding(name, label, callback, data)
+
+def unbind_key(id):
+    geany.bindings.unregister_binding(id)
