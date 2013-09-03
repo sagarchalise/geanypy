@@ -70,10 +70,7 @@ def documents():
     return Document.list_documents()
 
 def bind_key(name, label, callback, data=None):
-    if data is None:
-        geany.bindings.register_binding(name, label, callback)
-    else:
-        geany.bindings.register_binding(name, label, callback, data)
+    geany.bindings.register_binding(name, label, callback, data)
 
 def unbind_key(id):
     geany.bindings.unregister_binding(id)
