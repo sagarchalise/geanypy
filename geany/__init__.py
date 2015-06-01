@@ -67,8 +67,6 @@ tool_prefs = ToolPrefs()
 
 # GObject to connect signal handlers on and which emits signals.
 signals = SignalManager()
-
-# Initialize the keybindings manager
 bindings.init()
 
 import plugin
