@@ -188,14 +188,7 @@ class ConsolePlugin(geany.Plugin):
         self.bg = clr_btn.get_color().to_string()
 
 
-    def show_configure(self):
-        dialog = Gtk.Dialog(title="Configure Python Console",
-                            parent=geany.main_widgets.window,
-                            flags=Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                            buttons=(Gtk.STOCK_CLOSE, Gtk.ResponseType.ACCEPT))
-        content_area = dialog.get_content_area()
-        content_area.set_border_width(6)
-
+    def configure(self, dialog):
         vbox = Gtk.VBox(spacing=6)
         vbox.set_border_width(6)
 
@@ -302,8 +295,4 @@ class ConsolePlugin(geany.Plugin):
 
         vbox.pack_start(fra_general, True, True, 0)
         vbox.pack_start(fra_appearances, False, True, 0)
-        content_area.pack_start(vbox, True, True, 0)
-        content_area.show_all()
-
-        dialog.run()
-        dialog.destroy()
+        return vbox

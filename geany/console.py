@@ -37,6 +37,8 @@
 # inside: GtkTextView is not a terminal.
 # The use case is: you have a python program, you create this widget,
 # and inspect your program interiors.
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import GObject, Gtk, Gdk, Pango
 import code
 import sys

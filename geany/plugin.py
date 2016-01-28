@@ -37,32 +37,32 @@ files with a `.py` extension will be loaded.
 """
 
 
-class Plugin(object):
+from geany.logger import PluginLogger
+from geany.pluginbase import PluginBase
+
+class Plugin(PluginBase):
     """
     Base class for all plugins.  All plugins must inherit from this in order
     to be properly detected.
     """
-
     # Child classes should implement these (at least __plugin__name__)
     #__plugin_name__ = None
     #__plugin_description__ = None
     #__plugin_version__ = None
     #__plugin_author__ = None
 
-
     _events = {
         "document-open": [],
         # TODO: add more events here
     }
 
-
-    def __init__(self):
+    def __init__(self, ctx=None):
+        super(Plugin, self).__init__(ctx)
         """
         When the plugin is loaded its __init__() function will be called
         so that's a good place to put plugin initialization code.
         """
-
-
+        self.logger = PluginLogger(self.name)
 
     def cleanup(self):
         """
@@ -70,7 +70,6 @@ class Plugin(object):
         it's a good place to put and clean-up/tear-down code.
         """
         pass
-
 
     @property
     def __plugin_name__(self):

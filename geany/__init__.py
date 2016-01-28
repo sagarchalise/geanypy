@@ -8,7 +8,6 @@ though no real attempt is made to mimic that structure here.
 """
 
 import app
-import bindings
 import console
 import dialogs
 import document
@@ -16,9 +15,8 @@ import editor
 import encoding
 import filetypes
 import highlighting
-import loader
+import glog
 import main
-import manager
 import msgwindow
 import navqueue
 import prefs
@@ -44,6 +42,7 @@ __all__ = [ "Plugin",
             "main_widgets",
             "interface_prefs",
             "app",
+            "glog",
             "general_prefs",
             "search_prefs",
             "template_prefs",
@@ -65,9 +64,6 @@ tool_prefs = ToolPrefs()
 
 # GObject to connect signal handlers on and which emits signals.
 signals = SignalManager()
-
-# Initialize the keybindings manager
-bindings.init()
 
 import plugin
 from plugin import Plugin
