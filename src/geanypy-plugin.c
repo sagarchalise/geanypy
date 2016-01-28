@@ -69,7 +69,7 @@ GeanyPy_start_interpreter(void)
     Py_Initialize();
 
     /* Import the C modules */
-    //PySys_SetArgv(0, "[]");
+    PySys_SetArgv(0, "[]");
     PyInit_app();
     PyInit_dialogs();
     PyInit_document();

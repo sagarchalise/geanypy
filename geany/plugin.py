@@ -59,7 +59,7 @@ class Plugin(PluginBase):
 
 
 	def __init__(self, ctx=None):
-		PluginBase.__init__(self, ctx)
+		super(Plugin, self).__init__(ctx)
 		"""
 		When the plugin is loaded its __init__() function will be called
 		so that's a good place to put plugin initialization code.
