@@ -4,7 +4,7 @@
 static void
 Filetype_dealloc(Filetype *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -34,9 +34,9 @@ Filetype_get_property(Filetype *self, const gchar *prop_name)
 	else if (g_str_equal(prop_name, "extension"))
 		GEANYPY_RETURN_STRING(self->ft->extension)
 	else if (g_str_equal(prop_name, "id"))
-		return PyInt_FromLong((glong) self->ft->id);
+		return PyLong_FromLong((glong) self->ft->id);
 	else if (g_str_equal(prop_name, "lang"))
-		return PyInt_FromLong((glong) self->ft->lang);
+		return PyLong_FromLong((glong) self->ft->lang);
 	else if (g_str_equal(prop_name, "name"))
 		GEANYPY_RETURN_STRING(self->ft->name)
 	else if (g_str_equal(prop_name, "pattern"))
@@ -67,7 +67,7 @@ Filetype_get_property(Filetype *self, const gchar *prop_name)
 			Py_RETURN_FALSE;
 	}
 	else if (g_str_equal(prop_name, "group"))
-		return PyInt_FromLong((glong) self->ft->group);
+		return PyLong_FromLong((glong) self->ft->group);
 	else if (g_str_equal(prop_name, "error_regex_string"))
 		return PyString_FromString(self->ft->error_regex_string);
 	else if (g_str_equal(prop_name, "lexer_filetype"))
@@ -85,9 +85,9 @@ Filetype_get_property(Filetype *self, const gchar *prop_name)
 	else if (g_str_equal(prop_name, "comment_single"))
 		GEANYPY_RETURN_STRING(self->ft->comment_single)
 	else if (g_str_equal(prop_name, "indent_type"))
-		return PyInt_FromLong((glong) self->ft->indent_type);
+		return PyLong_FromLong((glong) self->ft->indent_type);
 	else if (g_str_equal(prop_name, "indent_width"))
-		return PyInt_FromLong((glong) self->ft->indent_width);
+		return PyLong_FromLong((glong) self->ft->indent_width);
 #endif
 
 	Py_RETURN_NONE;
@@ -128,8 +128,7 @@ static PyGetSetDef Filetype_getseters[] = {
 
 
 static PyTypeObject FiletypeType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.filetypes.Filetype",					/* tp_name */
 	sizeof(Filetype),							/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -253,19 +252,30 @@ PyMethodDef FiletypeModule_methods[] = {
 
 
 PyMODINIT_FUNC
-initfiletypes(void)
+PyInit_filetypes(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "filetypes",     /* m_name */
+        "Filetype information and management.",  /* m_doc */
+        -1,                  /* m_size */
+        FiletypeModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	FiletypeType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&FiletypeType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("filetypes", FiletypeModule_methods,
-			"Filetype information and management.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&FiletypeType);
 	PyModule_AddObject(m, "Filetype", (PyObject *)&FiletypeType);
+    return m;
 }
 
 

@@ -4,7 +4,7 @@
 static void
 Editor_dealloc(Editor *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -108,7 +108,7 @@ Editor_set_property(Editor *self, PyObject *value, const gchar *prop_name)
 
 	if (g_str_equal(prop_name, "indent_type"))
 	{
-		long indent_type = PyInt_AsLong(value);
+		long indent_type = PyLong_AsLong(value);
 		if (indent_type == -1 && PyErr_Occurred())
 		{
 			PyErr_Print();
@@ -328,8 +328,7 @@ static PyGetSetDef Editor_getseters[] = {
 
 
 static PyTypeObject EditorType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.editor.Editor",						/* tp_name */
 	sizeof(Editor),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -418,20 +417,30 @@ PyMethodDef EditorModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initeditor(void)
+PyMODINIT_FUNC PyInit_editor(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "editor",     /* m_name */
+        "Editor information and management.",  /* m_doc */
+        -1,                  /* m_size */
+        EditorModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	EditorType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&EditorType) < 0)
-		return;
+		return NULL;
 
 	IndentPrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&IndentPrefsType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("editor", EditorModule_methods,
-			"Editor information and management.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&EditorType);
 	PyModule_AddObject(m, "Editor", (PyObject *)&EditorType);
@@ -454,6 +463,7 @@ PyMODINIT_FUNC initeditor(void)
 	PyModule_AddIntConstant(m, "INDENT_TYPE_SPACES", (glong) GEANY_INDENT_TYPE_SPACES);
 	PyModule_AddIntConstant(m, "INDENT_TYPE_TABS", (glong) GEANY_INDENT_TYPE_TABS);
 	PyModule_AddIntConstant(m, "INDENT_TYPE_BOTH", (glong) GEANY_INDENT_TYPE_BOTH);
+    return m;
 }
 
 

@@ -12,7 +12,7 @@ static void
 SearchPrefs_dealloc(SearchPrefs *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -59,8 +59,7 @@ static PyGetSetDef SearchPrefs_getseters[] = {
 
 
 static PyTypeObject SearchPrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.search.SearchPrefs",							/* tp_name */
 	sizeof(SearchPrefs),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -100,17 +99,28 @@ static PyMethodDef SearchPrefsModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initsearch(void)
+PyMODINIT_FUNC PyInit_search(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "search",     /* m_name */
+        "Search preferences and information.",  /* m_doc */
+        -1,                  /* m_size */
+        SearchPrefsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	SearchPrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&SearchPrefsType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("search", SearchPrefsModule_methods,
-			"Search preferences and information.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&SearchPrefsType);
 	PyModule_AddObject(m, "SearchPrefs", (PyObject *) &SearchPrefsType);
+    return m;
 }

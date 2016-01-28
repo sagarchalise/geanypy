@@ -113,12 +113,22 @@ PyMethodDef MsgwinModule_methods[] = {
 
 
 PyMODINIT_FUNC
-initmsgwin(void)
+PyInit_msgwin(void)
 {
     PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "msgwindow",     /* m_name */
+        "Message windows information and management",  /* m_doc */
+        -1,                  /* m_size */
+        MsgwinModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
-    m = Py_InitModule3("msgwindow", MsgwinModule_methods,
-			"Message windows information and management.");
+    m = PyModule_Create(&moduledef);
 
 	PyModule_AddIntConstant(m, "COLOR_RED", COLOR_RED);
 	PyModule_AddIntConstant(m, "COLOR_DARK_RED", COLOR_DARK_RED);
@@ -130,4 +140,5 @@ initmsgwin(void)
     PyModule_AddIntConstant(m, "TAB_MESSAGE", MSG_MESSAGE);
     PyModule_AddIntConstant(m, "TAB_SCRIBBLE", MSG_SCRATCH);
     PyModule_AddIntConstant(m, "TAB_TERMINAL", MSG_VTE);
+    return m;
 }

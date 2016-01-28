@@ -5,7 +5,7 @@ static void
 Project_dealloc(Project *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -72,8 +72,7 @@ static PyGetSetDef Project_getseters[] = {
 
 
 PyTypeObject ProjectType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.project.Project",					/* tp_name */
 	sizeof(Project),							/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -92,16 +91,27 @@ PyTypeObject ProjectType = {
 static PyMethodDef ProjectModule_methods[] = { { NULL } };
 
 
-PyMODINIT_FUNC initproject(void)
+PyMODINIT_FUNC PyInit_project(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "project",     /* m_name */
+        "Project information.",  /* m_doc */
+        -1,                  /* m_size */
+        ProjectModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	ProjectType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&ProjectType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("project", ProjectModule_methods, "Project information");
-
+	m = PyModule_Create(&moduledef);
 	Py_INCREF(&ProjectType);
 	PyModule_AddObject(m, "Project", (PyObject *)&ProjectType);
+    return m;
 }

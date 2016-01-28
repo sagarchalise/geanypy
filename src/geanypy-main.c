@@ -47,7 +47,18 @@ PyMethodDef MainModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initmain(void)
+PyMODINIT_FUNC PyInit_main(void)
 {
-	Py_InitModule3("main", MainModule_methods, "Main program related functions.");
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "main",     /* m_name */
+        "Main program related functions.",  /* m_doc */
+        -1,                  /* m_size */
+        MainModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+	return PyModule_Create(&moduledef);
 }

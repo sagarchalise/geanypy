@@ -24,7 +24,7 @@ typedef struct
 } Notification;
 
 
-PyMODINIT_FUNC init_geany_scintilla(void);
+PyMODINIT_FUNC PyInit_scintilla(void);
 Scintilla *Scintilla_create_new_from_scintilla(ScintillaObject *sci);
 Notification *Notification_create_new_from_scintilla_notification(SCNotification *notif);
 NotifyHeader *NotifyHeader_create_new_from_scintilla_notification(SCNotification *notif);

@@ -12,7 +12,7 @@ static void
 Prefs_dealloc(Prefs *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -54,8 +54,7 @@ static PyGetSetDef Prefs_getseters[] = {
 
 
 static PyTypeObject PrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.prefs.Prefs",						/* tp_name */
 	sizeof(Prefs),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -82,7 +81,7 @@ static void
 ToolPrefs_dealloc(ToolPrefs *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -132,8 +131,7 @@ static PyGetSetDef ToolPrefs_getseters[] = {
 
 
 static PyTypeObject ToolPrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.prefs.ToolPrefs",						/* tp_name */
 	sizeof(ToolPrefs),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -168,24 +166,34 @@ static PyMethodDef PrefsModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initprefs(void)
+PyMODINIT_FUNC PyInit_prefs(void)
 {
 	PyObject *m;
-
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "prefs",     /* m_name */
+        "General preferences dialog settings",  /* m_doc */
+        -1,                  /* m_size */
+        PrefsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 	PrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&PrefsType) < 0)
-		return;
+		return NULL;
 
 	ToolPrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&ToolPrefsType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("prefs", PrefsModule_methods,
-			"General preferences dialog settings");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&PrefsType);
 	PyModule_AddObject(m, "Prefs", (PyObject *) &PrefsType);
 
 	Py_INCREF(&ToolPrefsType);
 	PyModule_AddObject(m, "ToolPrefs", (PyObject *) &ToolPrefsType);
+    return m;
 }

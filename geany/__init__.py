@@ -1,3 +1,4 @@
+#/usr/bin/env python3
 """
 Package file that exposes some of Geany's guts as its own attibutes.  Any
 objects where it only makes sense to have one instance of are initialed here
@@ -8,7 +9,6 @@ though no real attempt is made to mimic that structure here.
 """
 
 import app
-import bindings
 import console
 import dialogs
 import document
@@ -16,9 +16,8 @@ import editor
 import encoding
 import filetypes
 import highlighting
-import loader
+import glog
 import main
-import manager
 import msgwindow
 import navqueue
 import prefs
@@ -44,6 +43,7 @@ __all__ = [ "Plugin",
             "main_widgets",
             "interface_prefs",
             "app",
+            "glog",
             "general_prefs",
             "search_prefs",
             "template_prefs",
@@ -67,7 +67,7 @@ tool_prefs = ToolPrefs()
 signals = SignalManager()
 
 # Initialize the keybindings manager
-bindings.init()
+#bindings.init()
 
 import plugin
 from plugin import Plugin

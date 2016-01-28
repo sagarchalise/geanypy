@@ -12,7 +12,7 @@ static void
 App_dealloc(App *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -78,8 +78,7 @@ static PyGetSetDef App_getseters[] = {
 
 
 static PyTypeObject AppType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
 	"geany.app.App",							/* tp_name */
 	sizeof(App),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -98,16 +97,26 @@ static PyTypeObject AppType = {
 static PyMethodDef AppModule_methods[] = { { NULL } };
 
 
-PyMODINIT_FUNC initapp(void)
+PyMODINIT_FUNC PyInit_app(void)
 {
 	PyObject *m;
-
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "app",     /* m_name */
+        "Application information.",  /* m_doc */
+        -1,                  /* m_size */
+        AppModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 	AppType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&AppType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("app", AppModule_methods, "Application information");
-
+    m = PyModule_Create(&moduledef);
 	Py_INCREF(&AppType);
 	PyModule_AddObject(m, "App", (PyObject *) &AppType);
+    return m;
 }

@@ -14,7 +14,7 @@ static void
 InterfacePrefs_dealloc(InterfacePrefs *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -65,17 +65,17 @@ InterfacePrefs_get_property(InterfacePrefs *self, const gchar *prop_name)
 	else if (g_str_equal(prop_name, "sidebar_openfiles_visible"))
 		RET_BOOL(self->iface_prefs->sidebar_openfiles_visible)
 	else if (g_str_equal(prop_name, "sidebar_pos"))
-		return PyInt_FromLong((glong) self->iface_prefs->sidebar_pos);
+		return PyLong_FromLong((glong) self->iface_prefs->sidebar_pos);
 	else if (g_str_equal(prop_name, "sidebar_symbol_visible"))
 		RET_BOOL(self->iface_prefs->sidebar_symbol_visible)
 	else if (g_str_equal(prop_name, "statusbar_visible"))
 		RET_BOOL(self->iface_prefs->statusbar_visible)
 	else if (g_str_equal(prop_name, "tab_pos_editor"))
-		return PyInt_FromLong((glong) self->iface_prefs->tab_pos_editor);
+		return PyLong_FromLong((glong) self->iface_prefs->tab_pos_editor);
 	else if (g_str_equal(prop_name, "tab_pos_msgwin"))
-		return PyInt_FromLong((glong) self->iface_prefs->tab_pos_msgwin);
+		return PyLong_FromLong((glong) self->iface_prefs->tab_pos_msgwin);
 	else if (g_str_equal(prop_name, "tab_pos_sidebar"))
-		return PyInt_FromLong((glong) self->iface_prefs->tab_pos_sidebar);
+		return PyLong_FromLong((glong) self->iface_prefs->tab_pos_sidebar);
 	else if (g_str_equal(prop_name, "tagbar_font"))
 		return PyString_FromString(self->iface_prefs->tagbar_font);
 	else if (g_str_equal(prop_name, "use_native_windows_dialogs"))
@@ -133,8 +133,7 @@ static PyGetSetDef InterfacePrefs_getseters[] = {
 
 
 PyTypeObject InterfacePrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.ui_utils.InterfacePrefs",			/* tp_name */
 	sizeof(InterfacePrefs),						/* tp_basicsize */
 	0,											/* tp_itemsize */

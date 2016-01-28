@@ -37,6 +37,8 @@
 # inside: GtkTextView is not a terminal.
 # The use case is: you have a python program, you create this widget,
 # and inspect your program interiors.
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import GObject, Gtk, Gdk, Pango
 import code
 import sys
@@ -575,7 +577,7 @@ class _Console(_ReadLine, code.InteractiveInterpreter):
         except: pass
 
         try:
-            exec "import __builtin__" in self.locals
+            exec("import __builtin__", self.locals)
             strings.extend(eval("dir(__builtin__)", self.locals))
         except:
             pass

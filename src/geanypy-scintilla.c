@@ -12,7 +12,7 @@
 static void
 Scintilla_dealloc(Scintilla *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -885,8 +885,7 @@ static PyGetSetDef Scintilla_getseters[] = {
 
 
 static PyTypeObject ScintillaType = {
-	PyObject_HEAD_INIT(NULL)
-	0,												/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)												/* ob_size */
 	"geany.scintilla.Scintilla",					/* tp_name */
 	sizeof(Scintilla),								/* tp_basicsize */
 	0,												/* tp_itemsize */
@@ -906,23 +905,34 @@ static PyTypeObject ScintillaType = {
 static PyMethodDef ScintillaModule_methods[] = { { NULL } };
 
 
-PyMODINIT_FUNC initscintilla(void)
+PyMODINIT_FUNC PyInit_scintilla(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "scintilla",     /* m_name */
+        "Scintilla Bindings.",  /* m_doc */
+        -1,                  /* m_size */
+        ScintillaModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	ScintillaType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&ScintillaType) < 0)
-		return;
+		return NULL;
 
 	NotificationType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&NotificationType) < 0)
-		return;
+		return NULL;
 
 	NotifyHeaderType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&NotifyHeaderType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule("scintilla", ScintillaModule_methods);
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&ScintillaType);
 	PyModule_AddObject(m, "Scintilla", (PyObject *)&ScintillaType);
@@ -994,6 +1004,7 @@ PyMODINIT_FUNC initscintilla(void)
 	PyModule_AddIntConstant(m, "AUTOC_CANCELLED", SCN_AUTOCCANCELLED);
 	PyModule_AddIntConstant(m, "AUTOC_CHAR_DELETED", SCN_AUTOCCHARDELETED);
 	PyModule_AddIntConstant(m, "HOT_SPOT_RELEASE_CLICK", SCN_HOTSPOTRELEASECLICK);
+    return  m;
 }
 
 

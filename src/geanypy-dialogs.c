@@ -124,8 +124,18 @@ PyMethodDef DialogsModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initdialogs(void)
+PyMODINIT_FUNC PyInit_dialogs(void)
 {
-    Py_InitModule3("dialogs", DialogsModule_methods,
-		"Wrappers around Geany's dialog functions.");
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "dialogs",     /* m_name */
+        "Wrappers around Geany's dialog functions.",  /* m_doc */
+        -1,                  /* m_size */
+        DialogsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+    return PyModule_Create(&moduledef);
 }

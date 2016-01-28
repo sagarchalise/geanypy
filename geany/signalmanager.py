@@ -3,6 +3,8 @@ A simple analog of `GeanyObject` in the C API, that is, an object to emit
 all signals on.  The signals are emitted from the C code in signalmanager.c,
 where the Geany types get wrapped in PyObject types.
 """
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import GObject
 
 

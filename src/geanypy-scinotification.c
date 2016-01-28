@@ -5,7 +5,7 @@ static void
 Notification_dealloc(Notification *self)
 {
 	Py_XDECREF(self->hdr);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -37,45 +37,45 @@ Notification_get_property(Notification *self, const gchar *prop_name)
 		return (PyObject *) self->hdr;
 	}
 	else if (g_str_equal(prop_name, "position"))
-		return PyInt_FromLong((glong) self->notif->position);
+		return PyLong_FromLong((glong) self->notif->position);
 	else if (g_str_equal(prop_name, "ch"))
 		return Py_BuildValue("c", self->notif->ch);
 	else if (g_str_equal(prop_name, "modifiers"))
-		return PyInt_FromLong((glong) self->notif->modifiers);
+		return PyLong_FromLong((glong) self->notif->modifiers);
 	else if (g_str_equal(prop_name, "modification_type"))
-		return PyInt_FromLong((glong) self->notif->modificationType);
+		return PyLong_FromLong((glong) self->notif->modificationType);
 	else if (g_str_equal(prop_name, "text"))
 		return PyString_FromString(self->notif->text);
 	else if (g_str_equal(prop_name, "length"))
-		return PyInt_FromLong((glong) self->notif->length);
+		return PyLong_FromLong((glong) self->notif->length);
 	else if (g_str_equal(prop_name, "lines_added"))
-		return PyInt_FromLong((glong) self->notif->linesAdded);
+		return PyLong_FromLong((glong) self->notif->linesAdded);
 	else if (g_str_equal(prop_name, "message"))
-		return PyInt_FromLong((glong) self->notif->message);
+		return PyLong_FromLong((glong) self->notif->message);
 	else if (g_str_equal(prop_name, "w_param"))
 		return PyLong_FromLong(self->notif->wParam);
 	else if (g_str_equal(prop_name, "l_param"))
 		return PyLong_FromLong(self->notif->lParam);
 	else if (g_str_equal(prop_name, "line"))
-		return PyInt_FromLong((glong) self->notif->line);
+		return PyLong_FromLong((glong) self->notif->line);
 	else if (g_str_equal(prop_name, "fold_level_now"))
-		return PyInt_FromLong((glong) self->notif->foldLevelNow);
+		return PyLong_FromLong((glong) self->notif->foldLevelNow);
 	else if (g_str_equal(prop_name, "fold_level_prev"))
-		return PyInt_FromLong((glong) self->notif->foldLevelPrev);
+		return PyLong_FromLong((glong) self->notif->foldLevelPrev);
 	else if (g_str_equal(prop_name, "margin"))
-		return PyInt_FromLong((glong) self->notif->margin);
+		return PyLong_FromLong((glong) self->notif->margin);
 	else if (g_str_equal(prop_name, "list_type"))
-		return PyInt_FromLong((glong) self->notif->listType);
+		return PyLong_FromLong((glong) self->notif->listType);
 	else if (g_str_equal(prop_name, "x"))
-		return PyInt_FromLong((glong) self->notif->x);
+		return PyLong_FromLong((glong) self->notif->x);
 	else if (g_str_equal(prop_name, "y"))
-		return PyInt_FromLong((glong) self->notif->y);
+		return PyLong_FromLong((glong) self->notif->y);
 	else if (g_str_equal(prop_name, "token"))
-		return PyInt_FromLong((glong) self->notif->token);
+		return PyLong_FromLong((glong) self->notif->token);
 	else if (g_str_equal(prop_name, "annotation_lines_added"))
-		return PyInt_FromLong((glong) self->notif->annotationLinesAdded);
+		return PyLong_FromLong((glong) self->notif->annotationLinesAdded);
 	else if (g_str_equal(prop_name, "updated"))
-		return PyInt_FromLong((glong) self->notif->updated);
+		return PyLong_FromLong((glong) self->notif->updated);
 
 	Py_RETURN_NONE;
 }
@@ -109,8 +109,7 @@ static PyGetSetDef Notification_getseters[] = {
 
 
 PyTypeObject NotificationType = {
-	PyObject_HEAD_INIT(NULL)
-	0,												/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
 	"geany.scintilla.Notification",					/* tp_name */
 	sizeof(Notification),								/* tp_basicsize */
 	0,												/* tp_itemsize */

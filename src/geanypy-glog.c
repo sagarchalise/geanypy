@@ -23,11 +23,22 @@ PyMethodDef GlogModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initglog(void)
+PyMODINIT_FUNC PyInit_glog(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "glog",     /* m_name */
+        "GLib Log utility function.",  /* m_doc */
+        -1,                  /* m_size */
+        GlogModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
-	m = Py_InitModule3("glog", GlogModule_methods, "GLib Log utility functions.");
+	m = PyModule_Create(&moduledef);
 
 	/* TODO: These constants are for the geany.logger.GLIB_LOG_LEVEL_MAP mapping.
 	 *       It would be better to build this mapping on the C layer but how to
@@ -38,4 +49,5 @@ PyMODINIT_FUNC initglog(void)
 	PyModule_AddIntConstant(m, "LOG_LEVEL_WARNING", G_LOG_LEVEL_WARNING);
 	PyModule_AddIntConstant(m, "LOG_LEVEL_ERROR", G_LOG_LEVEL_ERROR);
 	PyModule_AddIntConstant(m, "LOG_LEVEL_CRITICAL", G_LOG_LEVEL_CRITICAL);
+    return m;
 }

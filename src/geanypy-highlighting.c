@@ -11,7 +11,7 @@ typedef struct
 static void
 LexerStyle_dealloc(LexerStyle *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -86,8 +86,7 @@ static PyGetSetDef LexerStyle_getseters[] = {
 
 
 static PyTypeObject LexerStyleType = {
-	PyObject_HEAD_INIT(NULL)
-	0,												/*ob_size*/
+	PyVarObject_HEAD_INIT(NULL, 0)											/*ob_size*/
 	"geany.highlighting.LexerStyle",				/*tp_name*/
 	sizeof(Editor),									/*tp_basicsize*/
 	0,												/*tp_itemsize*/
@@ -214,17 +213,29 @@ PyMethodDef EditorModule_methods[] = {
 
 
 PyMODINIT_FUNC
-inithighlighting(void)
+PyInit_highlighting(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "highlighting",     /* m_name */
+        "Highlighting information and management.",  /* m_doc */
+        -1,                  /* m_size */
+        EditorModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+
 
 	LexerStyleType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&LexerStyleType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("highlighting", EditorModule_methods,
-			"Highlighting information and management.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&LexerStyleType);
 	PyModule_AddObject(m, "LexerStyle", (PyObject *)&LexerStyleType);
+    return m;
 }

@@ -13,7 +13,7 @@ static void
 TemplatePrefs_dealloc(TemplatePrefs *self)
 {
 	g_return_if_fail(self != NULL);
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -66,8 +66,7 @@ static PyGetSetDef TemplatePrefs_getseters[] = {
 
 
 static PyTypeObject TemplatePrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.templates.TemplatePrefs",							/* tp_name */
 	sizeof(TemplatePrefs),								/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -86,17 +85,28 @@ static PyTypeObject TemplatePrefsType = {
 static PyMethodDef TemplatePrefsModule_methods[] = { { NULL } };
 
 
-PyMODINIT_FUNC inittemplates(void)
+PyMODINIT_FUNC PyInit_templates(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "template",     /* m_name */
+        "Template information and management.",  /* m_doc */
+        -1,                  /* m_size */
+        TemplatePrefsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	TemplatePrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&TemplatePrefsType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("templates", TemplatePrefsModule_methods,
-			"Template information and management.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&TemplatePrefsType);
 	PyModule_AddObject(m, "TemplatePrefs", (PyObject *) &TemplatePrefsType);
+    return m;
 }

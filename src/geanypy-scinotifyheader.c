@@ -4,7 +4,7 @@
 static void
 NotifyHeader_dealloc(NotifyHeader *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -34,7 +34,7 @@ NotifyHeader_get_property(NotifyHeader *self, const gchar *prop_name)
 	else if (g_str_equal(prop_name, "id_from"))
 		return PyLong_FromLong(self->notif->nmhdr.idFrom);
 	else if (g_str_equal(prop_name, "code"))
-		return PyInt_FromLong((glong) self->notif->nmhdr.code);
+		return PyLong_FromLong((glong) self->notif->nmhdr.code);
 
 	Py_RETURN_NONE;
 }
@@ -50,8 +50,7 @@ static PyGetSetDef NotifyHeader_getseters[] = {
 
 
 PyTypeObject NotifyHeaderType = {
-	PyObject_HEAD_INIT(NULL)
-	0,												/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
 	"geany.scintilla.NotifyHeader",					/* tp_name */
 	sizeof(NotifyHeader),							/* tp_basicsize */
 	0,												/* tp_itemsize */

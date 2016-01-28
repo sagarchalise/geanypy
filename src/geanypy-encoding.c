@@ -188,14 +188,25 @@ PyMethodDef EncodingsModule_methods[] = {
 
 
 PyMODINIT_FUNC
-initencoding(void)
+PyInit_encoding(void)
 {
 	int i;
     PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "encoding",     /* m_name */
+        "Encoding conversion functions.",  /* m_doc */
+        -1,                  /* m_size */
+        EncodingsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
-    m = Py_InitModule3("encoding", EncodingsModule_methods,
-			"Encoding conversion functions.");
+    m = PyModule_Create(&moduledef);
 
 	for (i = 0; i < GEANY_ENCODINGS_MAX; i++)
 		PyModule_AddIntConstant(m, encoding_names[i], (glong) i);
+    return m;
 }

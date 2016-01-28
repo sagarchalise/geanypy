@@ -21,45 +21,30 @@
 
 #include "geanypy.h"
 
-G_MODULE_EXPORT GeanyPlugin		*geany_plugin;
-G_MODULE_EXPORT GeanyData		*geany_data;
-G_MODULE_EXPORT GeanyFunctions	*geany_functions;
+#include <glib.h>
+#include <glib/gstdio.h>
 
-
-G_MODULE_EXPORT PLUGIN_VERSION_CHECK(211)
-
-G_MODULE_EXPORT PLUGIN_SET_INFO(
-	_("GeanyPy"),
-	_("Python plugins support"),
-	"1.0",
-	"Matthew Brush <mbrush@codebrainz.ca>")
-
-
-static GtkWidget *loader_item = NULL;
-static PyObject *manager = NULL;
-static gchar *plugin_dir = NULL;
-static SignalManager *signal_manager = NULL;
-
+GeanyData *geany_data;
 
 /* Forward declarations to prevent compiler warnings. */
-PyMODINIT_FUNC initapp(void);
-PyMODINIT_FUNC initbindings(void);
-PyMODINIT_FUNC initdialogs(void);
-PyMODINIT_FUNC initdocument(void);
-PyMODINIT_FUNC initeditor(void);
-PyMODINIT_FUNC initencoding(void);
-PyMODINIT_FUNC initfiletypes(void);
-PyMODINIT_FUNC initglog(void);
-PyMODINIT_FUNC inithighlighting(void);
-PyMODINIT_FUNC initmain(void);
-PyMODINIT_FUNC initmsgwin(void);
-PyMODINIT_FUNC initnavqueue(void);
-PyMODINIT_FUNC initprefs(void);
-PyMODINIT_FUNC initproject(void);
-PyMODINIT_FUNC initscintilla(void);
-PyMODINIT_FUNC initsearch(void);
-PyMODINIT_FUNC inittemplates(void);
-PyMODINIT_FUNC initui_utils(void);
+PyMODINIT_FUNC PyInit_app(void);
+PyMODINIT_FUNC PyInit_dialogs(void);
+PyMODINIT_FUNC PyInit_document(void);
+PyMODINIT_FUNC PyInit_editor(void);
+PyMODINIT_FUNC PyInit_encoding(void);
+PyMODINIT_FUNC PyInit_filetypes(void);
+PyMODINIT_FUNC PyInit_glog(void);
+PyMODINIT_FUNC PyInit_highlighting(void);
+PyMODINIT_FUNC PyInit_main(void);
+PyMODINIT_FUNC PyInit_msgwin(void);
+PyMODINIT_FUNC PyInit_navqueue(void);
+PyMODINIT_FUNC PyInit_prefs(void);
+PyMODINIT_FUNC PyInit_project(void);
+PyMODINIT_FUNC PyInit_scintilla(void);
+PyMODINIT_FUNC PyInit_search(void);
+PyMODINIT_FUNC PyInit_templates(void);
+PyMODINIT_FUNC PyInit_ui_utils(void);
+PyMODINIT_FUNC PyInit_pluginbase(void);
 
 
 static void
@@ -82,28 +67,27 @@ GeanyPy_start_interpreter(void)
 #endif
 
     Py_Initialize();
-    #if GTK_CHECK_VERSION(3, 0, 0)
-    PySys_SetArgv(0, "[]");
-    #endif
+
     /* Import the C modules */
-    initapp();
-    initbindings();
-    initdialogs();
-    initdocument();
-    initeditor();
-    initencoding();
-    initfiletypes();
-    initglog();
-    inithighlighting();
-    initmain();
-    initmsgwin();
-    initnavqueue();
-    initprefs();
-    initproject();
-    initscintilla();
-    initsearch();
-    inittemplates();
-    initui_utils();
+    //PySys_SetArgv(0, "[]");
+    PyInit_app();
+    PyInit_dialogs();
+    PyInit_document();
+    PyInit_editor();
+    PyInit_encoding();
+    PyInit_filetypes();
+    PyInit_glog();
+    PyInit_highlighting();
+    PyInit_main();
+    PyInit_msgwin();
+    PyInit_navqueue();
+    PyInit_prefs();
+    PyInit_project();
+    PyInit_scintilla();
+    PyInit_search();
+    PyInit_templates();
+    PyInit_ui_utils();
+    PyInit_pluginbase();
 
 #ifdef GEANYPY_WINDOWS
 	{ /* On windows, get path at runtime since we don't really know where
@@ -131,7 +115,9 @@ GeanyPy_start_interpreter(void)
         "import os, sys\n"
         "path = '%s'.replace('~', os.path.expanduser('~'))\n"
         "sys.path.append(path)\n"
-        "import geany\n", py_dir);
+        "path = '%s'.replace('~', os.path.expanduser('~'))\n"
+        "sys.path.append(path)\n"
+        "import geany\n", py_dir, GEANYPY_PLUGIN_DIR);
     g_free(py_dir);
 
     PyRun_SimpleString(init_code);
@@ -146,151 +132,420 @@ GeanyPy_stop_interpreter(void)
         Py_Finalize();
 }
 
-
-static void
-GeanyPy_init_manager(const gchar *dir)
+typedef struct
 {
-    PyObject *module, *man, *args;
-    gchar *sys_plugin_dir = NULL;
+	PyObject *base;
+	SignalManager *signal_manager;
+}
+GeanyPyData;
 
-    g_return_if_fail(dir != NULL);
-    module = PyImport_ImportModule("geany.manager");
-    if (module == NULL)
-    {
-        g_warning(_("Failed to import manager module"));
-        return;
-    }
+typedef struct
+{
+	PyObject *class;
+	PyObject *module;
+	PyObject *instance;
+}
+GeanyPyPluginData;
 
-    man = PyObject_GetAttrString(module, "PluginManager");
-    Py_DECREF(module);
-
-    if (man == NULL)
-    {
-        g_warning(_("Failed to retrieve PluginManager from manager module"));
-        return;
-    }
-
-#ifdef GEANYPY_WINDOWS
-	{ /* Detect the system plugin's dir at runtime on Windows since we
-	   * don't really know where Geany is installed. */
-		gchar *geany_base_dir;
-		geany_base_dir = g_win32_get_package_installation_directory_of_module(NULL);
-		if (geany_base_dir)
-		{
-			sys_plugin_dir = g_build_filename(geany_base_dir, "lib", "geanypy", "plugins", NULL);
-			g_free(geany_base_dir);
-		}
-		if (!g_file_test(sys_plugin_dir, G_FILE_TEST_EXISTS))
-		{
-			g_warning(_("System plugin directory not found."));
-			g_free(sys_plugin_dir);
-			sys_plugin_dir = NULL;
-		}
-	}
-#else
-	sys_plugin_dir = g_strdup(GEANYPY_PLUGIN_DIR);
-#endif
-
-
-	g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "User plugins: %s", dir);
-
-	if (sys_plugin_dir)
+static gboolean has_error(void)
+{
+	if (PyErr_Occurred())
 	{
-		g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, "System plugins: %s", sys_plugin_dir);
-		args = Py_BuildValue("(O, [s, s])", pygobject_new(G_OBJECT(geany_data->main_widgets->window)), sys_plugin_dir, dir);
-		g_free(sys_plugin_dir);
-	}
-	else
-		args = Py_BuildValue("(O, [s])", pygobject_new(G_OBJECT(geany_data->main_widgets->window)), dir);
-
-    manager = PyObject_CallObject(man, args);
-    if (PyErr_Occurred())
 		PyErr_Print();
-    Py_DECREF(man);
-    Py_DECREF(args);
+		return TRUE;
+	}
+	return FALSE;
+}
 
-    if (manager == NULL)
-    {
-        g_warning(_("Unable to instantiate new PluginManager"));
-        return;
-    }
+static PyTypeObject PluginBaseType;
+
+static gboolean geanypy_proxy_init(GeanyPlugin *plugin, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	GeanyPyPluginBase *base;
+	PyObject *args;
+
+	base = PyObject_New(GeanyPyPluginBase, &PluginBaseType);
+	base->plugin = plugin;
+
+	/* The new-style constructor gets a context parameter, and the class must pass
+	 * it to the geany.Plugin constructor. The new-style constructor is required
+	 * to have certain APIs work in it (those that need the GeanyPlugin pointer) */
+	args = Py_BuildValue("(O)", base);
+	data->instance = PyObject_CallObject(data->class, args);
+	Py_DECREF(args);
+	Py_DECREF(base);
+
+	if (PyErr_Occurred()) {
+		PyErr_Clear();
+		/* If the plugin still implements the old constructor we can catch this and try again */
+		data->instance = PyObject_CallObject(data->class, NULL);
+	}
+
+	if (has_error())
+		return FALSE;
+
+	((GeanyPyPluginBase *)data->instance)->plugin = plugin;
+
+	return TRUE;
+}
+
+
+static void geanypy_proxy_cleanup(GeanyPlugin *plugin, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+
+	PyObject_CallMethod(data->instance, "cleanup", NULL);
+	if (has_error())
+		return;
+}
+
+
+static GtkWidget *geanypy_proxy_configure(GeanyPlugin *plugin, GtkDialog *parent, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	PyObject *o, *oparent;
+	GObject *widget;
+
+	oparent = pygobject_new(G_OBJECT(parent));
+	o = PyObject_CallMethod(data->instance, "configure", "O", oparent, NULL);
+	Py_DECREF(oparent);
+
+	if (!has_error() && o != NULL)
+	{
+		/* Geany wants only the underlying GtkWidget, we must only ref that
+		 * and free the pygobject wrapper */
+		widget = g_object_ref(pygobject_get(o));
+		Py_DECREF(o);
+		return GTK_WIDGET(widget);
+	}
+	return NULL;
+}
+
+static void geanypy_proxy_help(GeanyPlugin *plugin, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+
+	PyObject_CallMethod(data->instance, "help", NULL);
+	if (has_error())
+		return;
+}
+
+static gint
+geanypy_probe(GeanyPlugin *proxy, const gchar *filename, gpointer pdata)
+{
+	gchar *file_plugin = g_strdup_printf("%.*s.plugin",
+			(int)(strrchr(filename, '.') - filename), filename);
+	gint ret = PROXY_IGNORED;
+
+	/* avoid clash with libpeas py plugins, those come with a corresponding <plugin>.plugin file */
+	if (!g_file_test(file_plugin, G_FILE_TEST_EXISTS))
+		ret = PROXY_MATCHED;
+
+	g_free(file_plugin);
+	return ret;
+}
+
+
+static const gchar *string_from_attr(PyObject *o, const gchar *attr)
+{
+	PyObject *string = PyObject_GetAttrString(o, "__plugin_name__");
+	const gchar *ret = PyString_AsString(string);
+	Py_DECREF(string);
+
+	return ret;
+}
+
+
+static gpointer
+geanypy_load(GeanyPlugin *proxy, GeanyPlugin *subplugin, const gchar *filename, gpointer pdata)
+{
+	GeanyPyData *data = pdata;
+	PyObject *fromlist, *module, *dict, *key, *val, *found = NULL;
+	Py_ssize_t pos = 0;
+	gchar *modulename, *dot;
+	gpointer ret = NULL;
+
+	modulename = g_path_get_basename(filename);
+	/* We are guaranteed that filename has a .py extension
+	 * because we did geany_plugin_register_proxy() for it */
+	dot = strrchr(modulename, '.');
+	*dot = '\0';
+	/* we need a fromlist to be able to import modules with a '.' in the
+	 * name. -- libpeas */
+	fromlist = PyTuple_New (0);
+
+	module = PyImport_ImportModuleEx(modulename, NULL, NULL, fromlist);
+	if (has_error() || !module)
+		goto err;
+
+	dict = PyModule_GetDict(module);
+
+	while (PyDict_Next (dict, &pos, &key, &val) && found == NULL)
+	{
+		if (PyType_Check(val) && PyObject_IsSubclass(val, data->base))
+			found = val;
+	}
+
+	if (found)
+	{
+		GeanyPyPluginData *pdata = g_slice_new(GeanyPyPluginData);
+		PluginInfo *info     = subplugin->info;
+		GeanyPluginFuncs *funcs = subplugin->funcs;
+		Py_INCREF(found);
+		pdata->module        = module;
+		pdata->class         = found;
+		pdata->instance      = NULL;
+		info->name           = string_from_attr(pdata->class, "__plugin_name__");
+		info->description    = string_from_attr(pdata->class, "__plugin_description__");
+		info->version        = string_from_attr(pdata->class, "__plugin_version__");
+		info->author         = string_from_attr(pdata->class, "__plugin_author__");
+		funcs->init          = geanypy_proxy_init;
+		funcs->cleanup       = geanypy_proxy_cleanup;
+		if (PyObject_HasAttrString(found, "configure"))
+			funcs->configure = geanypy_proxy_configure;
+		if (PyObject_HasAttrString(found, "help"))
+			funcs->help      = geanypy_proxy_help;
+		if (GEANY_PLUGIN_REGISTER_FULL(subplugin, 224, pdata, NULL))
+			ret              = pdata;
+	}
+
+err:
+	g_free(modulename);
+	Py_DECREF(fromlist);
+	return ret;
 }
 
 
 static void
-GeanyPy_show_manager(void)
+geanypy_unload(GeanyPlugin *plugin, GeanyPlugin *subplugin, gpointer load_data, gpointer pdata_)
 {
-    PyObject *show_method;
+	GeanyPyPluginData *pdata = load_data;
 
-    g_return_if_fail(manager != NULL);
-
-    show_method = PyObject_GetAttrString(manager, "show_all");
-    if (show_method == NULL)
-    {
-        g_warning(_("Unable to get show_all() method on plugin manager"));
-        return;
-    }
-    PyObject_CallObject(show_method, NULL);
-    Py_DECREF(show_method);
+	Py_XDECREF(pdata->instance);
+	Py_DECREF(pdata->class);
+	Py_DECREF(pdata->module);
+	while (PyGC_Collect());
+	g_slice_free(GeanyPyPluginData, pdata);
 }
 
 
-static void
-on_python_plugin_loader_activate(GtkMenuItem *item, gpointer user_data)
+static gboolean geanypy_init(GeanyPlugin *plugin_, gpointer pdata)
 {
-    GeanyPy_show_manager();
+	const gchar *exts[] = { "py", NULL };
+	GeanyPyData *state = pdata;
+	PyObject *module;
+
+	plugin_->proxy_funcs->probe   = geanypy_probe;
+	plugin_->proxy_funcs->load    = geanypy_load;
+	plugin_->proxy_funcs->unload  = geanypy_unload;
+
+	geany_data = plugin_->geany_data;
+
+	GeanyPy_start_interpreter();
+	state->signal_manager = signal_manager_new(plugin_);
+
+	module = PyImport_ImportModule("geany.plugin");
+	if (has_error() || !module)
+		goto err;
+
+	state->base = PyObject_GetAttrString(module, "Plugin");
+	Py_DECREF(module);
+	if (has_error() || !state->base)
+		goto err;
+
+	if (!geany_plugin_register_proxy(plugin_, exts)) {
+		Py_DECREF(state->base);
+		goto err;
+	}
+
+	return TRUE;
+
+err:
+	signal_manager_free(state->signal_manager);
+	GeanyPy_stop_interpreter();
+	return FALSE;
 }
 
+
+static void geanypy_cleanup(GeanyPlugin *plugin, gpointer pdata)
+{
+	GeanyPyData *state = pdata;
+	signal_manager_free(state->signal_manager);
+	Py_DECREF(state->base);
+	GeanyPy_stop_interpreter();
+}
 
 G_MODULE_EXPORT void
-plugin_init(GeanyData *data)
+geany_load_module(GeanyPlugin *plugin)
 {
-    GeanyPy_start_interpreter();
-    signal_manager = signal_manager_new(geany_plugin);
+	GeanyPyData *state = g_new0(GeanyPyData, 1);
 
-    plugin_dir = g_build_filename(geany->app->configdir,
-		"plugins", "geanypy", "plugins", NULL);
+	plugin->info->name        = _("GeanyPy");
+	plugin->info->description = _("Python plugins support");
+	plugin->info->version     = "1.0";
+	plugin->info->author      = "Matthew Brush <mbrush@codebrainz.ca>";
+	plugin->funcs->init       = geanypy_init;
+	plugin->funcs->cleanup    = geanypy_cleanup;
 
-    if (!g_file_test(plugin_dir, G_FILE_TEST_IS_DIR))
-    {
-        if (g_mkdir_with_parents(plugin_dir, 0755) == -1)
-        {
-            g_warning(_("Unable to create Python plugins directory: %s: %s"),
-                plugin_dir,
-                strerror(errno));
-            g_free(plugin_dir);
-            plugin_dir = NULL;
-        }
-    }
-
-    if (plugin_dir != NULL)
-        GeanyPy_init_manager(plugin_dir);
-
-    loader_item = gtk_menu_item_new_with_label(_("Python Plugin Manager"));
-	gtk_widget_set_sensitive(loader_item, plugin_dir != NULL);
-	gtk_menu_shell_append(GTK_MENU_SHELL(geany->main_widgets->tools_menu), loader_item);
-	gtk_widget_show(loader_item);
-	g_signal_connect(loader_item, "activate",
-		G_CALLBACK(on_python_plugin_loader_activate), NULL);
+	GEANY_PLUGIN_REGISTER_FULL(plugin, 224, state, g_free);
 }
 
 
-G_MODULE_EXPORT void plugin_cleanup(void)
+static void PluginBase_dealloc(GeanyPyPluginBase *self) { }
+
+
+static gboolean call_key(gpointer *unused, guint key_id, gpointer data)
 {
-    PyObject* deactivate_all_plugins = PyObject_GetAttrString(manager,
-            "deactivate_all_plugins");
-    if (deactivate_all_plugins != NULL)
-    {
-        PyObject* r = PyObject_CallObject(deactivate_all_plugins, NULL);
-        if (r)
-            Py_DECREF(r);
-        Py_DECREF(deactivate_all_plugins);
+	PyObject *callback = data;
+	PyObject *args;
 
-    }
+	args = Py_BuildValue("(i)", key_id);
+	PyObject_CallObject(callback, args);
+	Py_DECREF(args);
+}
 
-    signal_manager_free(signal_manager);
-    Py_XDECREF(manager);
-	GeanyPy_stop_interpreter();
-    gtk_widget_destroy(loader_item);
-    g_free(plugin_dir);
+
+static PyObject *
+PluginBase_set_kb_group(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
+{
+	static gchar *kwlist[] = { "section_name", "count", "callback", NULL };
+	int count = 0;
+	const gchar *section_name = NULL;
+	GeanyKeyGroup *group = NULL;
+	PyObject *py_callback = NULL;
+	if (PyArg_ParseTupleAndKeywords(args, kwargs, "si|O", kwlist, &section_name, &count, &py_callback))
+	{
+		if (PyCallable_Check(py_callback))
+		{
+			Py_INCREF(py_callback);
+			group = plugin_set_key_group_full(self->plugin, section_name, count,
+			                                  (GeanyKeyGroupFunc) call_key, py_callback, Py_DecRef);
+		}
+		else
+			group = plugin_set_key_group(self->plugin, section_name, count, NULL);
+	}
+
+	if (group)
+	{
+		GObject *wrapper;
+		PyObject *ret;
+		wrapper = g_object_new(G_TYPE_OBJECT, NULL);
+		g_object_set_data(wrapper, "pointer", group);
+		ret = pygobject_new(wrapper);
+		g_object_unref(wrapper);
+		return ret;
+	}
+	Py_RETURN_NONE;
+}
+
+
+static PyObject *
+PluginBase_set_kb_item(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
+{
+	static gchar *kwlist[] = { "key_group", "key_id", "key", "mod", "name", "label", "menu_item", "callback", NULL };
+	int id = -1;
+	int key;
+	int mod;
+	PyObject *py_group;
+	const gchar *name = NULL, *label = NULL;
+	PyObject *py_menu_item = NULL;
+	PyObject *py_callback  = NULL;
+
+	if (PyArg_ParseTupleAndKeywords(args, kwargs, "Oiiiss|OO", kwlist,
+		&py_group, &id, &key, &mod, &name, &label, &py_menu_item, &py_callback) && id >= 0)
+	{
+		GObject   *group_wrapper = G_OBJECT(pygobject_get(py_group));
+		GtkWidget *menu_item = (py_menu_item == NULL || py_menu_item == Py_None)
+									? NULL : GTK_WIDGET(pygobject_get(py_menu_item));
+		GeanyKeyGroup *group = g_object_get_data(group_wrapper, "pointer");
+		if (PyCallable_Check(py_callback))
+		{
+			Py_INCREF(py_callback);
+			keybindings_set_item_full(group, id, (guint) key, (GdkModifierType) mod, name, label,
+									  menu_item, (GeanyKeyBindingFunc) call_key, py_callback, Py_DecRef);
+		}
+		else
+			keybindings_set_item(group, id, NULL, (guint) key, (GdkModifierType) mod, name, label,
+									  menu_item);
+	}
+	Py_RETURN_NONE;
+}
+
+static PyMethodDef
+PluginBase_methods[] = {
+	{ "set_key_group",				(PyCFunction)PluginBase_set_kb_group,	METH_KEYWORDS,
+		"Sets up a GeanyKeybindingGroup for this plugin." },
+	{ "set_key_item",				(PyCFunction)PluginBase_set_kb_item,	METH_KEYWORDS,
+		"Adds an action to one of the plugin's key groups" },
+	{ NULL }
+};
+
+static PyMethodDef
+PluginModule_methods[] = {
+	{ NULL }
+};
+
+
+static PyGetSetDef
+PluginBase_getseters[] = {
+	{ NULL },
+};
+
+
+static int
+PluginBase_init(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
+{
+	GeanyPyPluginBase *py_context;
+
+	if (PyArg_ParseTuple(args, "O", (PyObject **) &py_context) && (PyObject *)py_context != Py_None)
+		self->plugin = py_context->plugin;
+
+	return 0;
+}
+
+
+static PyTypeObject PluginBaseType = {
+	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
+	"geany.pluginbase,PluginBase",					/* tp_name */
+	sizeof(GeanyPyPluginBase),								/* tp_basicsize */
+	0,											/* tp_itemsize */
+	(destructor) PluginBase_dealloc,				/* tp_dealloc */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* tp_print - tp_as_buffer */
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,	/* tp_flags */
+	"Wrapper around a GeanyPlugin structure."	,/* tp_doc */
+	0, 0, 0, 0, 0, 0,							/* tp_traverse - tp_iternext */
+	PluginBase_methods,							/* tp_methods */
+	0,											/* tp_members */
+	PluginBase_getseters,							/* tp_getset */
+	0, 0, 0, 0, 0,								/* tp_base - tp_dictoffset */
+	(initproc) PluginBase_init,						/* tp_init */
+	0, 0,										/* tp_alloc - tp_new */
+};
+
+
+PyMODINIT_FUNC PyInit_pluginbase(void)
+{
+	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "geany.pluginbase",     /* m_name */
+        "Plugin management.",  /* m_doc */
+        -1,                  /* m_size */
+        PluginModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+
+	PluginBaseType.tp_new = PyType_GenericNew;
+	if (PyType_Ready(&PluginBaseType) < 0)
+		return NULL;
+
+	m = PyModule_Create(&moduledef);
+
+	Py_INCREF(&PluginBaseType);
+	PyModule_AddObject(m, "PluginBase", (PyObject *)&PluginBaseType);
+    return m;
 }

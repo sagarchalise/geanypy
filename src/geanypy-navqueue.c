@@ -74,7 +74,18 @@ PyMethodDef NavqueueModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initnavqueue(void)
+PyMODINIT_FUNC PyInit_navqueue(void)
 {
-	Py_InitModule3("navqueue", NavqueueModule_methods, "Simple code navigation.");
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "navqueue",     /* m_name */
+        "Simple code navigation.",  /* m_doc */
+        -1,                  /* m_size */
+        NavqueueModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+	return PyModule_Create(&moduledef);
 }

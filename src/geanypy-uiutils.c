@@ -3,7 +3,7 @@
 
 #define GOB_CHECK(pyobj, arg) \
 	{ \
-		if (!pyobj || pyobj == Py_None || !pygobject_check(pyobj, PyGobject_Type))                                     \
+		if (!pyobj || pyobj == Py_None || !pygobject_check(pyobj, PyGobject_Type))                 \
 		{ \
 			PyErr_SetString(PyExc_ValueError, \
 				"argument " #arg " must inherit from a gobject.GObject type"); \
@@ -123,7 +123,7 @@ UiUtils_combo_box_add_to_history(PyObject *module, PyObject *args, PyObject *kwa
 	{
 		GOB_CHECK(py_cbo, 1);
 		widget = pygobject_get(py_cbo);
-		GOB_TYPE_CHECK(widget, GTK_TYPE_COMBO_BOX_TEXT, 1);
+		GOB_TYPE_CHECK(widget, GTK_TYPE_COMBO_BOX, 1);
 		ui_combo_box_add_to_history(GTK_COMBO_BOX_TEXT(widget), text, hist_len);
 	}
 
@@ -205,7 +205,7 @@ UiUtils_get_gtk_settings_integer(PyObject *module, PyObject *args, PyObject *kwa
 	if (PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &prop_name,
 		&default_value))
 	{
-		return PyInt_FromLong(
+		return PyLong_FromLong(
 				(glong) ui_get_gtk_settings_integer(prop_name, default_value));
 	}
 
@@ -416,36 +416,43 @@ static PyMethodDef UiUtilsModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initui_utils(void)
+PyMODINIT_FUNC PyInit_ui_utils(void)
 {
-    PyObject *m;
-    #if GTK_CHECK_VERSION(3, 0, 0)
+	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "ui_utils",     /* m_name */
+        "User Interface information and utilities",  /* m_doc */
+        -1,                  /* m_size */
+        UiUtilsModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
     pygobject_init(-1, -1, -1);
     m = PyImport_ImportModule("gi._gobject");
-    #else
-    init_pygobject();
-    init_pygtk();
-    m = PyImport_ImportModule("gobject");
-    #endif
-    if (m)
-    {
-        PyGobject_Type = (PyTypeObject *) PyObject_GetAttrString(m, "_PyGObject_API");
-        Py_XDECREF(m);
-    }
+	if (m)
+	{
+		PyGobject_Type = (PyTypeObject *) PyObject_GetAttrString(m, "_PyGObject_API");
+		Py_XDECREF(m);
+	}
+
 	InterfacePrefsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&InterfacePrefsType) < 0)
-		return;
+		return NULL;
+
 
 	MainWidgetsType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&MainWidgetsType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("ui_utils", UiUtilsModule_methods,
-			"User interface information and utilities.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&InterfacePrefsType);
 	PyModule_AddObject(m, "InterfacePrefs", (PyObject *) &InterfacePrefsType);
 
 	Py_INCREF(&MainWidgetsType);
 	PyModule_AddObject(m, "MainWidgets", (PyObject *) &MainWidgetsType);
+    return m;
 }

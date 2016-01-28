@@ -38,7 +38,10 @@ extern "C" {
 #endif
 #include <structmember.h>
 
-
+#define PyString PyUnicode
+#define PyString_FromString PyUnicode_FromString
+#define PyString_AsString PyUnicode_AsUTF8
+#define PyString_FromFormat PyUnicode_FromFormat
 /* Defines a setter that throws an attribute exception when called. */
 #define GEANYPY_PROPS_READONLY(cls) \
 	static int \
@@ -77,15 +80,6 @@ extern "C" {
 #include <gtk/gtk.h>
 #include <pygobject.h>
 
-#ifdef GEANYPY_WINDOWS
-/* Used with the results of `pkg-config --cflags pygtk-2.0` */
-#include <pygtk.h>
-/* On windows the path of pygtk.h is directly an include dir */
-#endif
-#if !GTK_CHECK_VERSION(3, 0, 0)
-#include <pygtk/pygtk.h>
-#endif
-
 #ifndef GTK
 #  define GTK
 #endif
@@ -111,7 +105,6 @@ extern "C" {
 #include "geanypy-scintilla.h"
 #include "geanypy-signalmanager.h"
 #include "geanypy-uiutils.h"
-
 
 #ifdef __cplusplus
 } /* extern "C" */

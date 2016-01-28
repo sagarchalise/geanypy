@@ -4,7 +4,7 @@
 static void
 IndentPrefs_dealloc(IndentPrefs *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -30,11 +30,11 @@ IndentPrefs_get_property(IndentPrefs *self, const gchar *prop_name)
 	}
 
 	if (g_str_equal(prop_name, "width"))
-		return PyInt_FromLong((glong) self->indent_prefs->width);
+		return PyLong_FromLong((glong) self->indent_prefs->width);
 	else if (g_str_equal(prop_name, "type"))
-		return PyInt_FromLong((glong) self->indent_prefs->type);
+		return PyLong_FromLong((glong) self->indent_prefs->type);
 	else if (g_str_equal(prop_name, "hard_tab_width"))
-		return PyInt_FromLong((glong) self->indent_prefs->hard_tab_width);
+		return PyLong_FromLong((glong) self->indent_prefs->hard_tab_width);
 
 	Py_RETURN_NONE;
 }
@@ -52,8 +52,7 @@ static PyGetSetDef IndentPrefs_getseters[] = {
 
 
 PyTypeObject IndentPrefsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,												/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
 	"geany.editor.IndentPrefs",						/* tp_name */
 	sizeof(IndentPrefs),							/* tp_basicsize */
 	0,												/* tp_itemsize */

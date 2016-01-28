@@ -9,6 +9,6 @@ typedef struct
 	GeanyProject *project;
 } Project;
 
-PyMODINIT_FUNC initproject(void);
+PyMODINIT_FUNC PyInit_project(void);
 
 #endif /* GEANYPY_PROJECT_H__ */

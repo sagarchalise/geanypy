@@ -4,7 +4,7 @@
 static void
 MainWidgets_dealloc(MainWidgets *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -77,8 +77,7 @@ static PyGetSetDef MainWidgets_getseters[] = {
 
 
 PyTypeObject MainWidgetsType = {
-	PyObject_HEAD_INIT(NULL)
-	0,													/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)												/* ob_size */
 	"geany.ui_utils.MainWidgets",						/* tp_name */
 	sizeof(MainWidgets),								/* tp_basicsize */
 	0,													/* tp_itemsize */

@@ -4,7 +4,7 @@
 static void
 Document_dealloc(Document *self)
 {
-	self->ob_type->tp_free((PyObject *) self);
+	Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 
@@ -114,9 +114,9 @@ Document_get_property(Document *self, const gchar *prop_name)
 	else if (g_str_equal(prop_name, "text_changed"))
 	{
 		if (self->doc->changed)
-			Py_RETURN_NONE;
+			Py_RETURN_TRUE;
 		else
-			Py_RETURN_NONE;
+			Py_RETURN_FALSE;
 	}
 
 	Py_RETURN_NONE;
@@ -157,7 +157,7 @@ Document_set_property(Document *self, PyObject *value, const gchar *prop_name)
 	}
 	else if (g_str_equal(prop_name, "text_changed"))
 	{
-		long v = PyInt_AsLong(value);
+		long v = PyLong_AsLong(value);
 		if (v == -1 && PyErr_Occurred())
 		{
 			PyErr_Print();
@@ -316,8 +316,7 @@ static PyGetSetDef Document_getseters[] = {
 
 
 static PyTypeObject DocumentType = {
-	PyObject_HEAD_INIT(NULL)
-	0,											/* ob_size */
+	PyVarObject_HEAD_INIT(NULL, 0)										/* ob_size */
 	"geany.document.Document",					/* tp_name */
 	sizeof(Document),							/* tp_basicsize */
 	0,											/* tp_itemsize */
@@ -537,19 +536,30 @@ PyMethodDef DocumentModule_methods[] = {
 };
 
 
-PyMODINIT_FUNC initdocument(void)
+PyMODINIT_FUNC PyInit_document(void)
 {
 	PyObject *m;
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "document",     /* m_name */
+        "Document information and management.",  /* m_doc */
+        -1,                  /* m_size */
+        DocumentModule_methods,    /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
 
 	DocumentType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&DocumentType) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("document", DocumentModule_methods,
-			"Document information and management.");
+	m = PyModule_Create(&moduledef);
 
 	Py_INCREF(&DocumentType);
 	PyModule_AddObject(m, "Document", (PyObject *)&DocumentType);
+    return m;
 }
 
 
