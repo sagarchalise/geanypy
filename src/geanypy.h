@@ -78,12 +78,8 @@ extern "C" {
 #include <pygobject.h>
 
 #ifdef GEANYPY_WINDOWS
-/* Used with the results of `pkg-config --cflags pygtk-2.0` */
-#include <pygtk.h>
 /* On windows the path of pygtk.h is directly an include dir */
-#endif
-#if !GTK_CHECK_VERSION(3, 0, 0)
-#include <pygtk/pygtk.h>
+#  include <pygtk.h>
 #endif
 
 #ifndef GTK
@@ -107,6 +103,7 @@ extern "C" {
 #include "geanypy-encoding.h"
 #include "geanypy-filetypes.h"
 #include "geanypy-plugin.h"
+#include "geanypy-pluginbase.h"
 #include "geanypy-project.h"
 #include "geanypy-scintilla.h"
 #include "geanypy-signalmanager.h"

@@ -10,11 +10,13 @@ SOURCES = \
 	geanypy-highlighting.c \
 	geanypy-indentprefs.c \
 	geanypy-interfaceprefs.c \
+	geanypy-log.c \
 	geanypy-main.c \
 	geanypy-mainwidgets.c \
 	geanypy-msgwindow.c \
 	geanypy-navqueue.c \
 	geanypy-plugin.c \
+	geanypy-pluginbase.c \
 	geanypy-prefs.c \
 	geanypy-project.c \
 	geanypy-scinotification.c \
