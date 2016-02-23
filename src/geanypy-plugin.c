@@ -20,24 +20,12 @@
  */
 
 #include "geanypy.h"
+#include "geanypy-keybindings.h"
 
 #include <glib.h>
 #include <glib/gstdio.h>
 
-typedef struct
-{
-	PyObject *base;
-	SignalManager *signal_manager;
-}
-GeanyPyData;
-
-typedef struct
-{
-	PyObject *class;
-	PyObject *module;
-	PyObject *instance;
-}
-GeanyPyPluginData;
+GeanyData *geany_data;
 
 /* Forward declarations to prevent compiler warnings. */
 PyMODINIT_FUNC initapp(void);
@@ -51,25 +39,14 @@ PyMODINIT_FUNC inithighlighting(void);
 PyMODINIT_FUNC initmain(void);
 PyMODINIT_FUNC initmsgwin(void);
 PyMODINIT_FUNC initnavqueue(void);
-PyMODINIT_FUNC initpluginbase(void);
 PyMODINIT_FUNC initprefs(void);
 PyMODINIT_FUNC initproject(void);
 PyMODINIT_FUNC initscintilla(void);
 PyMODINIT_FUNC initsearch(void);
 PyMODINIT_FUNC inittemplates(void);
 PyMODINIT_FUNC initui_utils(void);
+PyMODINIT_FUNC initkeybindings(void);
 
-GeanyData *geany_data;
-
-static gboolean has_error(void)
-{
-	if (PyErr_Occurred())
-	{
-		PyErr_Print();
-		return TRUE;
-	}
-	return FALSE;
-}
 
 static void
 GeanyPy_start_interpreter(void)
@@ -105,13 +82,13 @@ GeanyPy_start_interpreter(void)
     initmain();
     initmsgwin();
     initnavqueue();
-    initpluginbase();
     initprefs();
     initproject();
     initscintilla();
     initsearch();
     inittemplates();
     initui_utils();
+    initkeybindings();
 
 #ifdef GEANYPY_WINDOWS
 	{ /* On windows, get path at runtime since we don't really know where
@@ -156,33 +133,38 @@ GeanyPy_stop_interpreter(void)
         Py_Finalize();
 }
 
+typedef struct
+{
+	PyObject *base;
+	SignalManager *signal_manager;
+}
+GeanyPyData;
+
+typedef struct
+{
+	PyObject *class;
+	PyObject *module;
+	PyObject *instance;
+}
+GeanyPyPluginData;
+
+static gboolean has_error(void)
+{
+	if (PyErr_Occurred())
+	{
+		PyErr_Print();
+		return TRUE;
+	}
+	return FALSE;
+}
+
 static gboolean geanypy_proxy_init(GeanyPlugin *plugin, gpointer pdata)
 {
 	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
-	GeanyPyPluginBase *base;
-	PyObject *args;
 
-	base = PyObject_New(GeanyPyPluginBase, &PluginBaseType);
-	base->plugin = plugin;
-
-	/* The new-style constructor gets a context parameter, and the class must pass
-	 * it to the geany.Plugin constructor. The new-style constructor is required
-	 * to have certain APIs work in it (those that need the GeanyPlugin pointer) */
-	args = Py_BuildValue("(O)", base);
-	data->instance = PyObject_CallObject(data->class, args);
-	Py_DECREF(args);
-	Py_DECREF(base);
-
-	if (PyErr_Occurred()) {
-		PyErr_Clear();
-		/* If the plugin still implements the old constructor we can catch this and try again */
-		data->instance = PyObject_CallObject(data->class, NULL);
-	}
-
+	data->instance = PyObject_CallObject(data->class, NULL);
 	if (has_error())
 		return FALSE;
-
-	((GeanyPyPluginBase *)data->instance)->plugin = plugin;
 
 	return TRUE;
 }
@@ -208,7 +190,7 @@ static GtkWidget *geanypy_proxy_configure(GeanyPlugin *plugin, GtkDialog *parent
 	o = PyObject_CallMethod(data->instance, "configure", "O", oparent, NULL);
 	Py_DECREF(oparent);
 
-	if (!has_error() && o != NULL)
+	if (!has_error() && o != Py_None)
 	{
 		/* Geany wants only the underlying GtkWidget, we must only ref that
 		 * and free the pygobject wrapper */
@@ -216,7 +198,48 @@ static GtkWidget *geanypy_proxy_configure(GeanyPlugin *plugin, GtkDialog *parent
 		Py_DECREF(o);
 		return GTK_WIDGET(widget);
 	}
+
+	Py_DECREF(o); /* Must unref even if it's Py_None */
 	return NULL;
+}
+
+
+static void do_show_configure(GtkWidget *button, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	PyObject_CallMethod(data->instance, "show_configure", NULL);
+}
+
+
+static GtkWidget *geanypy_proxy_configure_legacy(GeanyPlugin *plugin, GtkDialog *parent, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	PyObject *o, *oparent;
+	GtkWidget *box, *label, *button, *align;
+	gchar *text;
+
+	/* This creates a simple page that has only one button to show the plugin's legacy configure
+	 * dialog. It is for older plugins that implement show_configure(). It's not pretty but
+	 * it provides basic backwards compatibility. */
+	box = gtk_vbox_new(FALSE, 2);
+
+	text = g_strdup_printf("The plugin \"%s\" is older and hasn't been updated\nto provide a configuration UI. However, it provides a dialog to\nallow you to change the plugin's preferences.", plugin->info->name);
+	label = gtk_label_new(text);
+
+	align = gtk_alignment_new(0, 0, 1, 1);
+	gtk_container_add(GTK_CONTAINER(align), label);
+	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 6, 2, 2);
+	gtk_box_pack_start(GTK_BOX(box), align, FALSE, FALSE, 0);
+
+	button = gtk_button_new_with_label("Open dialog");
+	align = gtk_alignment_new(0.5, 0, 0.3f, 1);
+	gtk_container_add(GTK_CONTAINER(align), button);
+	g_signal_connect(button, "clicked", (GCallback) do_show_configure, pdata);
+	gtk_box_pack_start(GTK_BOX(box), align, FALSE, TRUE, 0);
+
+	gtk_widget_show_all(box);
+	g_free(text);
+	return box;
 }
 
 static void geanypy_proxy_help(GeanyPlugin *plugin, gpointer pdata)
@@ -246,7 +269,7 @@ geanypy_probe(GeanyPlugin *proxy, const gchar *filename, gpointer pdata)
 
 static const gchar *string_from_attr(PyObject *o, const gchar *attr)
 {
-	PyObject *string = PyObject_GetAttrString(o, "__plugin_name__");
+	PyObject *string = PyObject_GetAttrString(o, attr);
 	const gchar *ret = PyString_AsString(string);
 	Py_DECREF(string);
 
@@ -289,9 +312,11 @@ geanypy_load(GeanyPlugin *proxy, GeanyPlugin *subplugin, const gchar *filename, 
 		GeanyPyPluginData *pdata = g_slice_new(GeanyPyPluginData);
 		PluginInfo *info     = subplugin->info;
 		GeanyPluginFuncs *funcs = subplugin->funcs;
+		PyObject *caps = PyCapsule_New(subplugin, "GeanyPlugin", NULL);
 		Py_INCREF(found);
 		pdata->module        = module;
 		pdata->class         = found;
+		PyObject_SetAttrString(pdata->class, "__geany_plugin__", caps);
 		pdata->instance      = NULL;
 		info->name           = string_from_attr(pdata->class, "__plugin_name__");
 		info->description    = string_from_attr(pdata->class, "__plugin_description__");
@@ -301,6 +326,8 @@ geanypy_load(GeanyPlugin *proxy, GeanyPlugin *subplugin, const gchar *filename, 
 		funcs->cleanup       = geanypy_proxy_cleanup;
 		if (PyObject_HasAttrString(found, "configure"))
 			funcs->configure = geanypy_proxy_configure;
+		else if (PyObject_HasAttrString(found, "show_configure"))
+			funcs->configure = geanypy_proxy_configure_legacy;
 		if (PyObject_HasAttrString(found, "help"))
 			funcs->help      = geanypy_proxy_help;
 		if (GEANY_PLUGIN_REGISTER_FULL(subplugin, 224, pdata, NULL))
