@@ -419,14 +419,8 @@ static PyMethodDef UiUtilsModule_methods[] = {
 PyMODINIT_FUNC initui_utils(void)
 {
     PyObject *m;
-    #if GTK_CHECK_VERSION(3, 0, 0)
     pygobject_init(-1, -1, -1);
     m = PyImport_ImportModule("gi._gobject");
-    #else
-    init_pygobject();
-    init_pygtk();
-    m = PyImport_ImportModule("gobject");
-    #endif
     if (m)
     {
         PyGobject_Type = (PyTypeObject *) PyObject_GetAttrString(m, "_PyGObject_API");

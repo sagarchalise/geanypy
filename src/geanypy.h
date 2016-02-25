@@ -77,11 +77,6 @@ extern "C" {
 #include <gtk/gtk.h>
 #include <pygobject.h>
 
-#ifdef GEANYPY_WINDOWS
-/* On windows the path of pygtk.h is directly an include dir */
-#  include <pygtk.h>
-#endif
-
 #ifndef GTK
 #  define GTK
 #endif

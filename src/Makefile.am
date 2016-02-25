@@ -5,6 +5,7 @@ geanypy_la_LDFLAGS			=	-module -avoid-version -Wl,--export-dynamic
 geanypy_la_CPPFLAGS			=	@GEANY_CFLAGS@ @PYGOBJECT_CFLAGS@ @PYTHON_CPPFLAGS@ \
 								-DGEANYPY_PYTHON_DIR="\"$(libdir)/geany/geanypy\"" \
 								-DGEANYPY_PLUGIN_DIR="\"$(libdir)/geany\""
+								-DG_LOG_DOMAIN=\"GeanyPy\" \
 								-UHAVE_CONFIG_H
 geanypy_la_LIBADD			=	@GEANY_LIBS@ @PYGOBJECT_LIBS@ \
 								$(PYTHON_LDFLAGS) $(PYTHON_LIBS) \
