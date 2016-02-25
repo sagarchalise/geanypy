@@ -4,9 +4,11 @@ geanyplugindir				=	$(libdir)/geany
 geanypy_la_LDFLAGS			=	-module -avoid-version -Wl,--export-dynamic
 geanypy_la_CPPFLAGS			=	@GEANY_CFLAGS@ @PYGOBJECT_CFLAGS@ @PYTHON_CPPFLAGS@ \
 								-DGEANYPY_PYTHON_DIR="\"$(libdir)/geany/geanypy\"" \
-								-DGEANYPY_PLUGIN_DIR="\"$(datadir)/geany/geanypy/plugins\"" \
+								-DGEANYPY_PLUGIN_DIR="\"$(libdir)/geany\"" \
+								-DG_LOG_DOMAIN=\"GeanyPy\" \
 								-UHAVE_CONFIG_H
-geanypy_la_LIBADD			=	@GEANY_LIBS@ @PYGOBJECT_LIBS@ @PYTHON_LIBS@ \
+geanypy_la_LIBADD			=	@GEANY_LIBS@ @PYGOBJECT_LIBS@ \
+								$(PYTHON_LDFLAGS) $(PYTHON_LIBS) \
 								@PYTHON_EXTRA_LIBS@ @PYTHON_EXTRA_LDFLAGS@
 geanypy_la_SOURCES			=	geanypy-app.c \
 								geanypy-dialogs.c \
@@ -19,6 +21,7 @@ geanypy_la_SOURCES			=	geanypy-app.c \
 								geanypy-highlighting.c \
 								geanypy-indentprefs.c \
 								geanypy-interfaceprefs.c \
+								geanypy-keybindings.c \
 								geanypy-main.c \
 								geanypy-mainwidgets.c \
 								geanypy-msgwindow.c \

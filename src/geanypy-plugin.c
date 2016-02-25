@@ -20,6 +20,7 @@
  */
 
 #include "geanypy.h"
+#include "geanypy-keybindings.h"
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -44,7 +45,7 @@ PyMODINIT_FUNC PyInit_scintilla(void);
 PyMODINIT_FUNC PyInit_search(void);
 PyMODINIT_FUNC PyInit_templates(void);
 PyMODINIT_FUNC PyInit_ui_utils(void);
-PyMODINIT_FUNC PyInit_pluginbase(void);
+PyMODINIT_FUNC PyInit_keybindings(void);
 
 
 static void
@@ -87,7 +88,7 @@ GeanyPy_start_interpreter(void)
     PyInit_search();
     PyInit_templates();
     PyInit_ui_utils();
-    PyInit_pluginbase();
+    PyInit_keybindings();
 
 #ifdef GEANYPY_WINDOWS
 	{ /* On windows, get path at runtime since we don't really know where
@@ -157,35 +158,13 @@ static gboolean has_error(void)
 	return FALSE;
 }
 
-static PyTypeObject PluginBaseType;
-
 static gboolean geanypy_proxy_init(GeanyPlugin *plugin, gpointer pdata)
 {
 	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
-	GeanyPyPluginBase *base;
-	PyObject *args;
 
-	base = PyObject_New(GeanyPyPluginBase, &PluginBaseType);
-	base->plugin = plugin;
-
-	/* The new-style constructor gets a context parameter, and the class must pass
-	 * it to the geany.Plugin constructor. The new-style constructor is required
-	 * to have certain APIs work in it (those that need the GeanyPlugin pointer) */
-	args = Py_BuildValue("(O)", base);
-	data->instance = PyObject_CallObject(data->class, args);
-	Py_DECREF(args);
-	Py_DECREF(base);
-
-	if (PyErr_Occurred()) {
-		PyErr_Clear();
-		/* If the plugin still implements the old constructor we can catch this and try again */
-		data->instance = PyObject_CallObject(data->class, NULL);
-	}
-
+	data->instance = PyObject_CallObject(data->class, NULL);
 	if (has_error())
 		return FALSE;
-
-	((GeanyPyPluginBase *)data->instance)->plugin = plugin;
 
 	return TRUE;
 }
@@ -211,7 +190,7 @@ static GtkWidget *geanypy_proxy_configure(GeanyPlugin *plugin, GtkDialog *parent
 	o = PyObject_CallMethod(data->instance, "configure", "O", oparent, NULL);
 	Py_DECREF(oparent);
 
-	if (!has_error() && o != NULL)
+	if (!has_error() && o != Py_None)
 	{
 		/* Geany wants only the underlying GtkWidget, we must only ref that
 		 * and free the pygobject wrapper */
@@ -219,7 +198,48 @@ static GtkWidget *geanypy_proxy_configure(GeanyPlugin *plugin, GtkDialog *parent
 		Py_DECREF(o);
 		return GTK_WIDGET(widget);
 	}
+
+	Py_DECREF(o); /* Must unref even if it's Py_None */
 	return NULL;
+}
+
+
+static void do_show_configure(GtkWidget *button, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	PyObject_CallMethod(data->instance, "show_configure", NULL);
+}
+
+
+static GtkWidget *geanypy_proxy_configure_legacy(GeanyPlugin *plugin, GtkDialog *parent, gpointer pdata)
+{
+	GeanyPyPluginData *data = (GeanyPyPluginData *) pdata;
+	PyObject *o, *oparent;
+	GtkWidget *box, *label, *button, *align;
+	gchar *text;
+
+	/* This creates a simple page that has only one button to show the plugin's legacy configure
+	 * dialog. It is for older plugins that implement show_configure(). It's not pretty but
+	 * it provides basic backwards compatibility. */
+	box = gtk_vbox_new(FALSE, 2);
+
+	text = g_strdup_printf("The plugin \"%s\" is older and hasn't been updated\nto provide a configuration UI. However, it provides a dialog to\nallow you to change the plugin's preferences.", plugin->info->name);
+	label = gtk_label_new(text);
+
+	align = gtk_alignment_new(0, 0, 1, 1);
+	gtk_container_add(GTK_CONTAINER(align), label);
+	gtk_alignment_set_padding(GTK_ALIGNMENT(align), 0, 6, 2, 2);
+	gtk_box_pack_start(GTK_BOX(box), align, FALSE, FALSE, 0);
+
+	button = gtk_button_new_with_label("Open dialog");
+	align = gtk_alignment_new(0.5, 0, 0.3f, 1);
+	gtk_container_add(GTK_CONTAINER(align), button);
+	g_signal_connect(button, "clicked", (GCallback) do_show_configure, pdata);
+	gtk_box_pack_start(GTK_BOX(box), align, FALSE, TRUE, 0);
+
+	gtk_widget_show_all(box);
+	g_free(text);
+	return box;
 }
 
 static void geanypy_proxy_help(GeanyPlugin *plugin, gpointer pdata)
@@ -249,7 +269,7 @@ geanypy_probe(GeanyPlugin *proxy, const gchar *filename, gpointer pdata)
 
 static const gchar *string_from_attr(PyObject *o, const gchar *attr)
 {
-	PyObject *string = PyObject_GetAttrString(o, "__plugin_name__");
+	PyObject *string = PyObject_GetAttrString(o, attr);
 	const gchar *ret = PyString_AsString(string);
 	Py_DECREF(string);
 
@@ -292,9 +312,11 @@ geanypy_load(GeanyPlugin *proxy, GeanyPlugin *subplugin, const gchar *filename, 
 		GeanyPyPluginData *pdata = g_slice_new(GeanyPyPluginData);
 		PluginInfo *info     = subplugin->info;
 		GeanyPluginFuncs *funcs = subplugin->funcs;
+		PyObject *caps = PyCapsule_New(subplugin, "GeanyPlugin", NULL);
 		Py_INCREF(found);
 		pdata->module        = module;
 		pdata->class         = found;
+		PyObject_SetAttrString(pdata->class, "__geany_plugin__", caps);
 		pdata->instance      = NULL;
 		info->name           = string_from_attr(pdata->class, "__plugin_name__");
 		info->description    = string_from_attr(pdata->class, "__plugin_description__");
@@ -304,6 +326,8 @@ geanypy_load(GeanyPlugin *proxy, GeanyPlugin *subplugin, const gchar *filename, 
 		funcs->cleanup       = geanypy_proxy_cleanup;
 		if (PyObject_HasAttrString(found, "configure"))
 			funcs->configure = geanypy_proxy_configure;
+		else if (PyObject_HasAttrString(found, "show_configure"))
+			funcs->configure = geanypy_proxy_configure_legacy;
 		if (PyObject_HasAttrString(found, "help"))
 			funcs->help      = geanypy_proxy_help;
 		if (GEANY_PLUGIN_REGISTER_FULL(subplugin, 224, pdata, NULL))
@@ -389,163 +413,4 @@ geany_load_module(GeanyPlugin *plugin)
 	plugin->funcs->cleanup    = geanypy_cleanup;
 
 	GEANY_PLUGIN_REGISTER_FULL(plugin, 224, state, g_free);
-}
-
-
-static void PluginBase_dealloc(GeanyPyPluginBase *self) { }
-
-
-static gboolean call_key(gpointer *unused, guint key_id, gpointer data)
-{
-	PyObject *callback = data;
-	PyObject *args;
-
-	args = Py_BuildValue("(i)", key_id);
-	PyObject_CallObject(callback, args);
-	Py_DECREF(args);
-}
-
-
-static PyObject *
-PluginBase_set_kb_group(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
-{
-	static gchar *kwlist[] = { "section_name", "count", "callback", NULL };
-	int count = 0;
-	const gchar *section_name = NULL;
-	GeanyKeyGroup *group = NULL;
-	PyObject *py_callback = NULL;
-	if (PyArg_ParseTupleAndKeywords(args, kwargs, "si|O", kwlist, &section_name, &count, &py_callback))
-	{
-		if (PyCallable_Check(py_callback))
-		{
-			Py_INCREF(py_callback);
-			group = plugin_set_key_group_full(self->plugin, section_name, count,
-			                                  (GeanyKeyGroupFunc) call_key, py_callback, Py_DecRef);
-		}
-		else
-			group = plugin_set_key_group(self->plugin, section_name, count, NULL);
-	}
-
-	if (group)
-	{
-		GObject *wrapper;
-		PyObject *ret;
-		wrapper = g_object_new(G_TYPE_OBJECT, NULL);
-		g_object_set_data(wrapper, "pointer", group);
-		ret = pygobject_new(wrapper);
-		g_object_unref(wrapper);
-		return ret;
-	}
-	Py_RETURN_NONE;
-}
-
-
-static PyObject *
-PluginBase_set_kb_item(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
-{
-	static gchar *kwlist[] = { "key_group", "key_id", "key", "mod", "name", "label", "menu_item", "callback", NULL };
-	int id = -1;
-	int key;
-	int mod;
-	PyObject *py_group;
-	const gchar *name = NULL, *label = NULL;
-	PyObject *py_menu_item = NULL;
-	PyObject *py_callback  = NULL;
-
-	if (PyArg_ParseTupleAndKeywords(args, kwargs, "Oiiiss|OO", kwlist,
-		&py_group, &id, &key, &mod, &name, &label, &py_menu_item, &py_callback) && id >= 0)
-	{
-		GObject   *group_wrapper = G_OBJECT(pygobject_get(py_group));
-		GtkWidget *menu_item = (py_menu_item == NULL || py_menu_item == Py_None)
-									? NULL : GTK_WIDGET(pygobject_get(py_menu_item));
-		GeanyKeyGroup *group = g_object_get_data(group_wrapper, "pointer");
-		if (PyCallable_Check(py_callback))
-		{
-			Py_INCREF(py_callback);
-			keybindings_set_item_full(group, id, (guint) key, (GdkModifierType) mod, name, label,
-									  menu_item, (GeanyKeyBindingFunc) call_key, py_callback, Py_DecRef);
-		}
-		else
-			keybindings_set_item(group, id, NULL, (guint) key, (GdkModifierType) mod, name, label,
-									  menu_item);
-	}
-	Py_RETURN_NONE;
-}
-
-static PyMethodDef
-PluginBase_methods[] = {
-	{ "set_key_group",				(PyCFunction)PluginBase_set_kb_group,	METH_KEYWORDS,
-		"Sets up a GeanyKeybindingGroup for this plugin." },
-	{ "set_key_item",				(PyCFunction)PluginBase_set_kb_item,	METH_KEYWORDS,
-		"Adds an action to one of the plugin's key groups" },
-	{ NULL }
-};
-
-static PyMethodDef
-PluginModule_methods[] = {
-	{ NULL }
-};
-
-
-static PyGetSetDef
-PluginBase_getseters[] = {
-	{ NULL },
-};
-
-
-static int
-PluginBase_init(GeanyPyPluginBase *self, PyObject *args, PyObject *kwargs)
-{
-	GeanyPyPluginBase *py_context;
-
-	if (PyArg_ParseTuple(args, "O", (PyObject **) &py_context) && (PyObject *)py_context != Py_None)
-		self->plugin = py_context->plugin;
-
-	return 0;
-}
-
-
-static PyTypeObject PluginBaseType = {
-	PyVarObject_HEAD_INIT(NULL, 0)											/* ob_size */
-	"geany.pluginbase,PluginBase",					/* tp_name */
-	sizeof(GeanyPyPluginBase),								/* tp_basicsize */
-	0,											/* tp_itemsize */
-	(destructor) PluginBase_dealloc,				/* tp_dealloc */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* tp_print - tp_as_buffer */
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,	/* tp_flags */
-	"Wrapper around a GeanyPlugin structure."	,/* tp_doc */
-	0, 0, 0, 0, 0, 0,							/* tp_traverse - tp_iternext */
-	PluginBase_methods,							/* tp_methods */
-	0,											/* tp_members */
-	PluginBase_getseters,							/* tp_getset */
-	0, 0, 0, 0, 0,								/* tp_base - tp_dictoffset */
-	(initproc) PluginBase_init,						/* tp_init */
-	0, 0,										/* tp_alloc - tp_new */
-};
-
-
-PyMODINIT_FUNC PyInit_pluginbase(void)
-{
-	PyObject *m;
-    static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "geany.pluginbase",     /* m_name */
-        "Plugin management.",  /* m_doc */
-        -1,                  /* m_size */
-        PluginModule_methods,    /* m_methods */
-        NULL,                /* m_reload */
-        NULL,                /* m_traverse */
-        NULL,                /* m_clear */
-        NULL,                /* m_free */
-    };
-
-	PluginBaseType.tp_new = PyType_GenericNew;
-	if (PyType_Ready(&PluginBaseType) < 0)
-		return NULL;
-
-	m = PyModule_Create(&moduledef);
-
-	Py_INCREF(&PluginBaseType);
-	PyModule_AddObject(m, "PluginBase", (PyObject *)&PluginBaseType);
-    return m;
 }
