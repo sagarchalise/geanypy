@@ -83,6 +83,8 @@ extern "C" {
 #include <Scintilla.h>
 #include <ScintillaWidget.h>
 
+#undef NotifyHeader
+
 #include <geanyplugin.h>
 
 #ifndef G_LOG_DOMAIN
